@@ -16,6 +16,7 @@ pub struct ContributionStats {
     pub high_score: HighScore,
     pub quartiles: [u32; 5],
     pub daily_contributions: Vec<(String, u32, String)>, // (date, count, label)
+    pub yearly_contributions: String,
 }
 
 #[derive(Debug, Deserialize, serde::Serialize, Clone)]
@@ -36,6 +37,17 @@ pub async fn fetch_contribution_stats(username: &str, _github_url: Option<&str>)
         if let Some(for_id) = tooltip.value().attr("for") {
             let text = tooltip.text().collect::<String>().trim().to_string();
             tooltip_map.insert(for_id.to_string(), text);
+        }
+    }
+
+    // Parse yearly contributions as text from the h2 element
+    let mut yearly_contributions = String::new();
+    if let Ok(h2_selector) = Selector::parse("h2#js-contribution-activity-description") {
+        if let Some(h2) = document.select(&h2_selector).next() {
+            let text = h2.text().collect::<String>().trim().to_string();
+            if let Some(num) = text.split_whitespace().next() {
+                yearly_contributions = num.to_string();
+            }
         }
     }
 
@@ -105,6 +117,7 @@ pub async fn fetch_contribution_stats(username: &str, _github_url: Option<&str>)
         high_score: HighScore { score: high_score, date: high_score_date },
         quartiles,
         daily_contributions: contributions,
+        yearly_contributions,
     })
 }
 

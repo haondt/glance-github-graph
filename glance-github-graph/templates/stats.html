@@ -1,34 +1,28 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>GitHub Contribution Stats for {{ stats.username }}</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 2em; }
-        table { border-collapse: collapse; width: 100%; margin-top: 1em; }
-        th, td { border: 1px solid #ccc; padding: 0.5em; text-align: left; }
-        th { background: #f0f0f0; }
-    </style>
-</head>
-<body>
-    <h1>GitHub Contribution Stats for {{ stats.username }}</h1>
-    <ul>
-        <li><strong>Today's Contributions:</strong> {{ stats.today }}</li>
-        <li><strong>Current Streak:</strong> {{ stats.current_streak }}</li>
-        <li><strong>Longest Streak:</strong> {{ stats.longest_streak }}</li>
-        <li><strong>High Score:</strong> {{ stats.high_score.score }} on {{ stats.high_score.date }}</li>
-        <li><strong>Quartiles:</strong> {{ self.quartiles_display() }}</li>
-    </ul>
-    <h2>Daily Contributions</h2>
-    <table>
-        <thead>
-            <tr><th>Date</th><th>Contributions</th><th>Label</th></tr>
-        </thead>
-        <tbody>
-        {% for (date, count, label) in stats.daily_contributions %}
-            <tr><td>{{ date }}</td><td>{{ count }}</td><td>{{ label }}</td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
-</body>
-</html> 
+<div class="list list-gap-20 list-with-separator">
+    <div class="flex justify-between text-center">
+        <div class="flex flex-column">
+            <span class="color-highlight size-h3">{{ stats.today }}</span>
+            <span class="size-h6">Today</span>
+        </div>
+        <div class="flex flex-column">
+            <span class="color-highlight size-h3">{{ stats.yearly_contributions }}</span>
+            <span class="size-h6">Year</span>
+        </div>
+        <div class="flex flex-column">
+            <span class="color-highlight size-h3">{{ stats.current_streak }}</span>
+            <span class="size-h6">Streak</span>
+        </div>
+        <div class="flex flex-column">
+            <span class="color-highlight size-h3">{{ stats.longest_streak }}</span>
+            <span class="size-h6">Top Streak</span>
+        </div>
+    </div>
+    {% if show_quartiles %}
+    <div class="flex justify-center text-center">
+        <div class="flex flex-column">
+            <span class="color-highlight size-h3">{{ self.quartiles_display() }}</span>
+            <span class="size-h6">Quartiles</span>
+        </div>
+    </div>
+    {% endif %}
+</div>

@@ -198,14 +198,20 @@ async fn get_stats(username: &str) -> Result<crate::ContributionStats, String> {
     Ok(stats)
 }
 
-async fn stats_handler(path: web::Path<String>) -> impl Responder {
+async fn stats_handler(path: web::Path<String>, req: HttpRequest) -> impl Responder {
     let username = path.into_inner();
+    let query = req.query_string();
+    let params: HashMap<_, _> = url::form_urlencoded::parse(query.as_bytes()).into_owned().collect();
+    let show_quartiles = params.get("show_quartiles").map(|v| v == "true").unwrap_or(true);
     match get_stats(&username).await {
         Ok(stats) => {
-            let template = ContributionStatsTemplate { stats: &stats };
+            let template = ContributionStatsTemplate { stats: &stats, show_quartiles };
             match template.render() {
                 Ok(body) => HttpResponse::Ok()
                     .content_type("text/html")
+                    .insert_header(("Widget-Title", format!("{}'s GitHub Stats", username)))
+                    .insert_header(("Widget-Title-Url", format!("https://github.com/{}", username)))
+                    .insert_header(("Widget-Content-Type", "html"))
                     .body(body),
                 Err(e) => HttpResponse::InternalServerError().body(format!("Template error: {}", e)),
             }

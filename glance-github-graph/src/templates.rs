@@ -13,11 +13,12 @@ pub struct GraphCell {
 #[template(path = "stats.html")]
 pub struct ContributionStatsTemplate<'a> {
     pub stats: &'a crate::ContributionStats,
+    pub show_quartiles: bool,
 }
 
 impl<'a> ContributionStatsTemplate<'a> {
     pub fn quartiles_display(&self) -> String {
-        self.stats.quartiles.iter().map(|q| q.to_string()).collect::<Vec<_>>().join(", ")
+        self.stats.quartiles.iter().map(|q| q.to_string()).collect::<Vec<_>>().join(" ")
     }
 }
 
@@ -55,6 +56,6 @@ pub struct ContributionGraphHtmlTemplate<'a> {
 
 impl<'a> ContributionGraphHtmlTemplate<'a> {
     pub fn quartiles_display(&self) -> String {
-        self.stats.quartiles.iter().map(|q| q.to_string()).collect::<Vec<_>>().join(", ")
+        self.stats.quartiles.iter().map(|q| q.to_string()).collect::<Vec<_>>().join(" ")
     }
 } 
