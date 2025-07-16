@@ -5,13 +5,13 @@ RUN apt-get update && apt-get install -y \
     rm -rf /var/lib/apt/lists/*
 
 ENV RUST_TARGET_amd64=x86_64-unknown-linux-musl
-ENV RUST_TARGET_arm64=aarch64-unknown-linux-gnu
+ENV RUST_TARGET_arm64=aarch64-unknown-linux-musl
 RUN rustup target add $(eval echo \$RUST_TARGET_${TARGETARCH})
 
 WORKDIR /app
 COPY . .
 
-ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc
 
 RUN TARGET=$(eval echo \$RUST_TARGET_${TARGETARCH}) && \
     cargo build --release --locked --target $TARGET && \
