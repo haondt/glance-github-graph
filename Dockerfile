@@ -9,7 +9,7 @@ ENV RUST_TARGET_arm64=aarch64-unknown-linux-musl
 RUN rustup target add $(eval echo \$RUST_TARGET_${TARGETARCH})
 
 WORKDIR /app
-COPY . .
+COPY Cargo.toml Cargo.lock src templates ./
 
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc
 

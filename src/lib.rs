@@ -6,6 +6,7 @@ use log::{info, error};
 
 pub mod api;
 pub mod color;
+pub mod config;
 pub mod templates;
 
 #[derive(Debug, Deserialize, serde::Serialize, Clone)]

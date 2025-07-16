@@ -1,5 +1,3 @@
-// Color manipulation utilities for the contribution graph
-
 pub fn hsl_string(h: f32, s: f32, l: f32) -> String {
     format!("hsl({:.0}, {:.0}%, {:.0}%)", h, s * 100.0, l * 100.0)
 }

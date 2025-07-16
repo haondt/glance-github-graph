@@ -1,6 +1,6 @@
 use actix_web::{web, App, HttpServer, Responder, HttpResponse, HttpRequest};
 use crate::fetch_contribution_stats;
-use std::env;
+use crate::config::Config;
 use std::sync::Mutex;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -18,27 +18,19 @@ lazy_static! {
 #[derive(Serialize, Deserialize)]
 struct FileCache(HashMap<String, (crate::ContributionStats, u64)>);
 
-struct GraphTemplateData {
-    max_count: u32,
-    cells: Vec<GraphCell>,
-    show_months: bool,
-    show_weekdays: bool,
-    primary_color: String,
-    color_shades: Vec<String>,
-    month_labels: Vec<(usize, String)>,
-    weekday_labels: Vec<(usize, &'static str)>,
-    cell_radius: u32,
-}
+fn prepare_graph_template_data<'a>(
+    stats: &'a crate::ContributionStats,
+    params: &HashMap<String, String>,
+    config: &Config
+) -> ContributionSvgGraphTemplate<'a> {
+    let primary_color = params.get("primary-color").cloned().unwrap_or_else(|| config.default_fg.clone());
+    let bg_color = params.get("background-color").cloned().unwrap_or_else(|| config.default_bg.clone());
+    let svg_height = params.get("svg-height").cloned().unwrap_or_else(|| config.default_svg_height.clone());
+    let show_months = params.get("show-months").and_then(|v| v.parse::<bool>().ok()).unwrap_or(config.default_show_months);
+    let show_weekdays = params.get("show-weekdays").and_then(|v| v.parse::<bool>().ok()).unwrap_or(config.default_show_weekdays);
 
-fn prepare_graph_template_data(
-    stats: &crate::ContributionStats,
-    primary_color: String,
-    bg_color: String
-) -> GraphTemplateData {
     let max_count = stats.daily_contributions.iter().map(|(_, c, _)| *c).max().unwrap_or(0);
     let max_rows = 7;
-    let show_months = std::env::var("GRAPH_SHOW_MONTHS").unwrap_or_else(|_| "true".to_string()) == "true";
-    let show_weekdays = std::env::var("GRAPH_SHOW_WEEKDAYS").unwrap_or_else(|_| "true".to_string()) == "true";
     let color_shades = color::derive_color_shades_with_bg(&primary_color, &bg_color);
     let cells: Vec<GraphCell> = stats.daily_contributions.iter().enumerate().map(|(i, (date, count, label))| {
         let col = i / max_rows;
@@ -71,9 +63,8 @@ fn prepare_graph_template_data(
             }
         }
     }
-    let weekday_labels = vec![(1, "Mon"), (3, "Wed"), (5, "Fri")];
-    let cell_radius = std::env::var("GRAPH_CELL_RADIUS").ok().and_then(|v| v.parse().ok()).unwrap_or(2);
-    GraphTemplateData {
+    ContributionSvgGraphTemplate{
+        stats,
         max_count,
         cells,
         show_months,
@@ -81,8 +72,9 @@ fn prepare_graph_template_data(
         primary_color,
         color_shades,
         month_labels,
-        weekday_labels,
-        cell_radius,
+        weekday_labels: config.weekday_labels.clone(),
+        svg_height,
+        cell_radius: config.cell_radius,
     }
 }
 
@@ -93,14 +85,13 @@ fn add_widget_headers(username: &str, builder: &mut actix_web::HttpResponseBuild
 }
 
 pub async fn run_api_server() -> std::io::Result<()> {
-    let cache_enabled = std::env::var("CACHE_ENABLED").unwrap_or_else(|_| "false".to_string()) == "true";
-    let cache_type = std::env::var("CACHE_TYPE").unwrap_or_else(|_| "memory".to_string());
-    let cache_duration_secs: u64 = std::env::var("CACHE_DURATION_SECS").ok().and_then(|v| v.parse().ok()).unwrap_or(3600);
+    let config = Config::from_env();
 
     info!("Starting API server on 0.0.0.0:8080");
-    info!("Cache enabled: {}, type: {}, duration: {}s", cache_enabled, cache_type, cache_duration_secs);
+    info!("Cache enabled: {}, type: {}, duration: {}s", config.cache_enabled, config.cache_type, config.cache_duration_secs);
 
-    if cache_enabled && cache_type == "memory" {
+    if config.cache_enabled && config.cache_type == "memory" {
+        let config_clone = config.clone();
         tokio::spawn(async move {
             let interval = std::time::Duration::from_secs(60);
             loop {
@@ -108,7 +99,7 @@ pub async fn run_api_server() -> std::io::Result<()> {
                 let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
                 let mut cache = MEMORY_CACHE.lock().unwrap();
                 let before = cache.len();
-                cache.retain(|_, &mut (_, timestamp)| now - timestamp < cache_duration_secs);
+                cache.retain(|_, &mut (_, timestamp)| now - timestamp < config_clone.cache_duration_secs);
                 let after = cache.len();
                 if before != after {
                     info!("Memory cache cleaned: {} -> {} entries", before, after);
@@ -129,19 +120,16 @@ pub async fn run_api_server() -> std::io::Result<()> {
 }
 
 async fn get_stats(username: &str) -> Result<crate::ContributionStats, String> {
-    let cache_enabled = env::var("CACHE_ENABLED").unwrap_or_else(|_| "false".to_string()) == "true";
-    let cache_type = env::var("CACHE_TYPE").unwrap_or_else(|_| "memory".to_string());
-    let cache_duration_secs: u64 = env::var("CACHE_DURATION_SECS").ok().and_then(|v| v.parse().ok()).unwrap_or(3600);
-    let cache_file_path = env::var("CACHE_FILE_PATH").unwrap_or_else(|_| "cache.json".to_string());
+    let config = Config::from_env();
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
-    let stats = if cache_enabled {
-        if cache_type == "memory" {
+    let stats = if config.cache_enabled {
+        if config.cache_type == "memory" {
             if let Some(stats) = {
                 let cache = MEMORY_CACHE.lock().unwrap();
                 cache.get(username).cloned()
             } {
-                if now - stats.1 < cache_duration_secs {
+                if now - stats.1 < config.cache_duration_secs {
                     Some(stats.0)
                 } else {
                     None
@@ -149,11 +137,11 @@ async fn get_stats(username: &str) -> Result<crate::ContributionStats, String> {
             } else {
                 None
             }
-        } else if cache_type == "file" {
-            if let Ok(mut file) = std::fs::File::open(&cache_file_path) {
+        } else if config.cache_type == "file" {
+            if let Ok(mut file) = std::fs::File::open(&config.cache_file_path) {
                 if let Ok(file_cache) = serde_json::from_reader::<_, FileCache>(&mut file) {
                     if let Some((stats, timestamp)) = file_cache.0.get(username) {
-                        if now - *timestamp < cache_duration_secs {
+                        if now - *timestamp < config.cache_duration_secs {
                             Some(stats.clone())
                         } else {
                             None
@@ -178,12 +166,12 @@ async fn get_stats(username: &str) -> Result<crate::ContributionStats, String> {
         Some(stats) => stats,
         None => match fetch_contribution_stats(username, None).await {
             Ok(stats) => {
-                if cache_enabled {
-                    if cache_type == "memory" {
+                if config.cache_enabled {
+                    if config.cache_type == "memory" {
                         let mut cache = MEMORY_CACHE.lock().unwrap();
                         cache.insert(username.to_string(), (stats.clone(), now));
-                    } else if cache_type == "file" {
-                        let mut cache_map = if let Ok(mut file) = std::fs::File::open(&cache_file_path) {
+                    } else if config.cache_type == "file" {
+                        let mut cache_map = if let Ok(mut file) = std::fs::File::open(&config.cache_file_path) {
                             if let Ok(file_cache) = serde_json::from_reader::<_, FileCache>(&mut file) {
                                 file_cache.0
                             } else {
@@ -194,7 +182,7 @@ async fn get_stats(username: &str) -> Result<crate::ContributionStats, String> {
                         };
                         cache_map.insert(username.to_string(), (stats.clone(), now));
                         let file_cache = FileCache(cache_map);
-                        if let Ok(mut file) = std::fs::File::create(&cache_file_path) {
+                        if let Ok(mut file) = std::fs::File::create(&config.cache_file_path) {
                             let _ = serde_json::to_writer(&mut file, &file_cache);
                         }
                     }
@@ -216,7 +204,11 @@ async fn stats_handler(path: web::Path<String>, req: HttpRequest) -> impl Respon
     match get_stats(&username).await {
         Ok(stats) => {
             info!("Successfully got stats for user: {}", username);
-            let template = ContributionStatsTemplate { stats: &stats, show_quartiles };
+            let template = ContributionStatsTemplate { 
+                stats: &stats,
+                show_quartiles,
+                quartiles_string: stats.quartiles.iter().map(|q| q.to_string()).collect::<Vec<_>>().join(" "),
+            };
             match template.render() {
                 Ok(body) => HttpResponse::Ok()
                     .content_type("text/html")
@@ -237,30 +229,14 @@ async fn stats_handler(path: web::Path<String>, req: HttpRequest) -> impl Respon
     }
 }
 
-
 async fn svg_graph_handler(path: web::Path<String>, req: HttpRequest) -> impl Responder {
     let username = path.into_inner();
     let query = req.query_string();
     let params: HashMap<_, _> = url::form_urlencoded::parse(query.as_bytes()).into_owned().collect();
-    let primary_color = params.get("fg").cloned().unwrap_or_else(|| "#40c463".to_string());
-    let bg_color = params.get("bg").cloned().unwrap_or_else(|| "#ebedf0".to_string());
-    let svg_height = params.get("svg_height").cloned().unwrap_or_else(|| "110".to_string());
+    let config = Config::from_env();
     match get_stats(&username).await {
         Ok(stats) => {
-            let data = prepare_graph_template_data(&stats, primary_color, bg_color);
-            let template = ContributionSvgGraphTemplate {
-                stats: &stats,
-                max_count: data.max_count,
-                cells: data.cells,
-                show_months: data.show_months,
-                svg_height,
-                show_weekdays: data.show_weekdays,
-                primary_color: data.primary_color,
-                color_shades: data.color_shades,
-                month_labels: data.month_labels,
-                weekday_labels: data.weekday_labels,
-                cell_radius: data.cell_radius,
-            };
+            let template = prepare_graph_template_data(&stats, &params, &config);
             let mut builder = HttpResponse::Ok();
             add_widget_headers(&username, &mut builder);
             match template.render() {
@@ -279,24 +255,14 @@ async fn graph_html_handler(path: web::Path<String>, req: HttpRequest) -> impl R
     let username = path.into_inner();
     let query = req.query_string();
     let params: HashMap<_, _> = url::form_urlencoded::parse(query.as_bytes()).into_owned().collect();
-    let primary_color = params.get("fg").cloned().unwrap_or_else(|| "#40c463".to_string());
-    let bg_color = params.get("bg").cloned().unwrap_or_else(|| "#ebedf0".to_string());
-    let svg_height = params.get("svg_height").cloned().unwrap_or_else(|| "110".to_string());
+    let config = Config::from_env();
     match get_stats(&username).await {
         Ok(stats) => {
-            let data = prepare_graph_template_data(&stats, primary_color, bg_color);
+            let svg = prepare_graph_template_data(&stats, &params, &config);
+            let quartiles = svg.stats.quartiles.iter().map(|q| q.to_string()).collect::<Vec<_>>().join(" ");
             let template = ContributionGraphHtmlTemplate {
-                stats: &stats,
-                max_count: data.max_count,
-                cells: data.cells,
-                show_months: data.show_months,
-                svg_height,
-                show_weekdays: data.show_weekdays,
-                primary_color: data.primary_color,
-                color_shades: data.color_shades,
-                month_labels: data.month_labels,
-                weekday_labels: data.weekday_labels,
-                cell_radius: data.cell_radius,
+                svg,
+                quartiles,
             };
             let mut builder = HttpResponse::Ok();
             add_widget_headers(&username, &mut builder);

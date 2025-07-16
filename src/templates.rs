@@ -14,12 +14,7 @@ pub struct GraphCell {
 pub struct ContributionStatsTemplate<'a> {
     pub stats: &'a crate::ContributionStats,
     pub show_quartiles: bool,
-}
-
-impl<'a> ContributionStatsTemplate<'a> {
-    pub fn quartiles_display(&self) -> String {
-        self.stats.quartiles.iter().map(|q| q.to_string()).collect::<Vec<_>>().join(" ")
-    }
+    pub quartiles_string: String,
 }
 
 #[derive(Template)]
@@ -41,21 +36,7 @@ pub struct ContributionSvgGraphTemplate<'a> {
 #[derive(Template)]
 #[template(path = "graph.html")]
 pub struct ContributionGraphHtmlTemplate<'a> {
-    pub stats: &'a crate::ContributionStats,
-    pub max_count: u32,
-    pub cells: Vec<GraphCell>,
-    pub show_months: bool,
-    pub svg_height: String,
-    pub show_weekdays: bool,
-    pub primary_color: String,
-    pub color_shades: Vec<String>,
-    pub month_labels: Vec<(usize, String)>,
-    pub weekday_labels: Vec<(usize, &'static str)>,
-    pub cell_radius: u32,
+    pub svg: ContributionSvgGraphTemplate<'a>,
+    pub quartiles: String,
 }
 
-impl<'a> ContributionGraphHtmlTemplate<'a> {
-    pub fn quartiles_display(&self) -> String {
-        self.stats.quartiles.iter().map(|q| q.to_string()).collect::<Vec<_>>().join(" ")
-    }
-} 
