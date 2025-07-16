@@ -1,6 +1,6 @@
 tasks:
   - type: docker-build
-    image: docker_slim_exporter
+    image: glance-github-graph
     platforms:
       - linux/arm64
       - linux/amd64
@@ -12,7 +12,8 @@ tasks:
       - source: push
         has_tag: true
         tag_source: latest
-    context: .
+    context: glance-github-graph
+    file: Dockerfile
     registries:
       - gitlab
       - docker-hub
