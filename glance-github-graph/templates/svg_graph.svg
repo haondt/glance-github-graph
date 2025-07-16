@@ -1,0 +1,22 @@
+<svg width="775" height="120" xmlns="http://www.w3.org/2000/svg">
+    {% set cell_size = 12 %}
+    {% set cell_gap = 2 %}
+    {% set max_rows = 7 %}
+    {% set label_offset = 30 %}
+    {% set top_offset = 20 %}
+    {% if show_months %}
+        {% for (col, month) in month_labels %}
+            <text x="{{ col * (cell_size + cell_gap) + label_offset }}" y="{{ top_offset - 5 }}" font-size="12" fill="var(--color-text-base)">{{ month }}</text>
+        {% endfor %}
+    {% endif %}
+    {% if show_weekdays %}
+        {% for (row, label) in weekday_labels %}
+            <text x="0" y="{{ top_offset + row * (cell_size + cell_gap) + 10 }}" font-size="12" fill="var(--color-text-base)">{{ label }}</text>
+        {% endfor %}
+    {% endif %}
+    {% for cell in cells %}
+        <rect x="{{ cell.col * (cell_size + cell_gap) + label_offset }}" y="{{ top_offset + cell.row * (cell_size + cell_gap) }}" width="{{ cell_size }}" height="{{ cell_size }}" fill="{{ cell.color }}" rx="{{ cell_radius }}" ry="{{ cell_radius }}">
+            <title>{{ cell.hover_text }}</title>
+        </rect>
+    {% endfor %}
+</svg> 

@@ -13,7 +13,7 @@ pub struct ContributionStats {
     pub longest_streak: u32,
     pub high_score: HighScore,
     pub quartiles: [u32; 5],
-    pub daily_contributions: Vec<(String, u32)>,
+    pub daily_contributions: Vec<(String, u32, String)>, // (date, count, label)
 }
 
 #[derive(Debug, Deserialize, serde::Serialize, Clone)]
@@ -38,7 +38,7 @@ pub async fn fetch_contribution_stats(username: &str, _github_url: Option<&str>)
     }
 
     let td_selector = Selector::parse("td.ContributionCalendar-day").unwrap();
-    let mut contributions: Vec<(String, u32)> = Vec::new();
+    let mut contributions: Vec<(String, u32, String)> = Vec::new();
     let mut high_score = 0;
     let mut high_score_date = String::new();
     for td in document.select(&td_selector) {
@@ -48,12 +48,13 @@ pub async fn fetch_contribution_stats(username: &str, _github_url: Option<&str>)
         let count = tooltip_text
             .and_then(|text| parse_contribution_count(text))
             .unwrap_or(0);
+        let label = tooltip_text.cloned().unwrap_or_default();
         if count > high_score {
             high_score = count;
             high_score_date = date.clone();
         }
         if !date.is_empty() {
-            contributions.push((date, count));
+            contributions.push((date, count, label));
         }
     }
     if contributions.is_empty() {
@@ -61,7 +62,7 @@ pub async fn fetch_contribution_stats(username: &str, _github_url: Option<&str>)
     }
     // Sort by date string (alphabetically, which works for YYYY-MM-DD)
     contributions.sort_by(|a, b| a.0.cmp(&b.0));
-    let counts: Vec<u32> = contributions.iter().map(|(_, c)| *c).collect();
+    let counts: Vec<u32> = contributions.iter().map(|(_, c, _)| *c).collect();
     // Calculate quartiles
     let mut sorted = counts.clone();
     sorted.sort();
