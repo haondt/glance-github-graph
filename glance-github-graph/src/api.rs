@@ -209,7 +209,7 @@ async fn stats_handler(path: web::Path<String>, req: HttpRequest) -> impl Respon
             match template.render() {
                 Ok(body) => HttpResponse::Ok()
                     .content_type("text/html")
-                    .insert_header(("Widget-Title", format!("{}'s GitHub Stats", username)))
+                    .insert_header(("Widget-Title", "GitHub Stats"))
                     .insert_header(("Widget-Title-Url", format!("https://github.com/{}", username)))
                     .insert_header(("Widget-Content-Type", "html"))
                     .body(body),
