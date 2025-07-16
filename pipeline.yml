@@ -1,0 +1,18 @@
+tasks:
+  - type: docker-build
+    image: docker_slim_exporter
+    platforms:
+      - linux/arm64
+      - linux/amd64
+    # qemu: true
+    auto:
+      - source: push
+        has_tag: true
+        tag_source: tag
+      - source: push
+        has_tag: true
+        tag_source: latest
+    context: .
+    registries:
+      - gitlab
+      - docker-hub

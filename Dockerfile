@@ -18,7 +18,6 @@ RUN TARGET=$(eval echo \$RUST_TARGET_${TARGETARCH}) && \
     cp target/$TARGET/release/glance-github-graph glance-github-graph
 
 FROM scratch
-ARG TARGETARCH
 WORKDIR /app
 COPY --from=builder /app/templates ./templates
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
