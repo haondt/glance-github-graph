@@ -9,6 +9,7 @@ use serde::{Serialize, Deserialize};
 use askama::Template;
 use crate::color;
 use crate::templates::{ContributionStatsTemplate, ContributionSvgGraphTemplate, ContributionGraphHtmlTemplate, GraphCell};
+use log::{info, error};
 
 lazy_static! {
     static ref MEMORY_CACHE: Mutex<HashMap<String, (crate::ContributionStats, u64)>> = Mutex::new(HashMap::new());
@@ -96,6 +97,9 @@ pub async fn run_api_server() -> std::io::Result<()> {
     let cache_type = std::env::var("CACHE_TYPE").unwrap_or_else(|_| "memory".to_string());
     let cache_duration_secs: u64 = std::env::var("CACHE_DURATION_SECS").ok().and_then(|v| v.parse().ok()).unwrap_or(3600);
 
+    info!("Starting API server on 0.0.0.0:8080");
+    info!("Cache enabled: {}, type: {}, duration: {}s", cache_enabled, cache_type, cache_duration_secs);
+
     if cache_enabled && cache_type == "memory" {
         tokio::spawn(async move {
             let interval = std::time::Duration::from_secs(60);
@@ -103,7 +107,12 @@ pub async fn run_api_server() -> std::io::Result<()> {
                 tokio::time::sleep(interval).await;
                 let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
                 let mut cache = MEMORY_CACHE.lock().unwrap();
+                let before = cache.len();
                 cache.retain(|_, &mut (_, timestamp)| now - timestamp < cache_duration_secs);
+                let after = cache.len();
+                if before != after {
+                    info!("Memory cache cleaned: {} -> {} entries", before, after);
+                }
             }
         });
     }
@@ -200,11 +209,13 @@ async fn get_stats(username: &str) -> Result<crate::ContributionStats, String> {
 
 async fn stats_handler(path: web::Path<String>, req: HttpRequest) -> impl Responder {
     let username = path.into_inner();
+    info!("Received /stats request for user: {}", username);
     let query = req.query_string();
     let params: HashMap<_, _> = url::form_urlencoded::parse(query.as_bytes()).into_owned().collect();
     let show_quartiles = params.get("show_quartiles").map(|v| v == "true").unwrap_or(true);
     match get_stats(&username).await {
         Ok(stats) => {
+            info!("Successfully got stats for user: {}", username);
             let template = ContributionStatsTemplate { stats: &stats, show_quartiles };
             match template.render() {
                 Ok(body) => HttpResponse::Ok()
@@ -213,10 +224,16 @@ async fn stats_handler(path: web::Path<String>, req: HttpRequest) -> impl Respon
                     .insert_header(("Widget-Title-Url", format!("https://github.com/{}", username)))
                     .insert_header(("Widget-Content-Type", "html"))
                     .body(body),
-                Err(e) => HttpResponse::InternalServerError().body(format!("Template error: {}", e)),
+                Err(e) => {
+                    error!("Template error for user '{}': {}", username, e);
+                    HttpResponse::InternalServerError().body(format!("Template error: {}", e))
+                },
             }
         },
-        Err(e) => HttpResponse::InternalServerError().body(e),
+        Err(e) => {
+            error!("Failed to get stats for user '{}': {}", username, e);
+            HttpResponse::InternalServerError().body(e)
+        },
     }
 }
 

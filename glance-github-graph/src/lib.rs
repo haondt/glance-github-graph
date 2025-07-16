@@ -2,6 +2,7 @@ use serde::Deserialize;
 use anyhow::{Result, anyhow};
 use scraper::{Html, Selector};
 use std::collections::HashMap;
+use log::{info, error};
 
 pub mod api;
 pub mod color;
@@ -27,7 +28,23 @@ pub struct HighScore {
 
 pub async fn fetch_contribution_stats(username: &str, _github_url: Option<&str>) -> Result<ContributionStats> {
     let url = format!("https://github.com/users/{}/contributions", username);
-    let body = reqwest::get(&url).await?.text().await?;
+    info!("Fetching contributions for user '{}' from {}", username, url);
+    let body = match reqwest::get(&url).await {
+        Ok(resp) => {
+            info!("Successfully fetched page for user '{}'.", username);
+            match resp.text().await {
+                Ok(text) => text,
+                Err(e) => {
+                    error!("Failed to read response text for user '{}': {}", username, e);
+                    return Err(anyhow!("Failed to read response text: {}", e));
+                }
+            }
+        },
+        Err(e) => {
+            error!("Failed to fetch page for user '{}': {}", username, e);
+            return Err(anyhow!("Failed to fetch page: {}", e));
+        }
+    };
     let document = Html::parse_document(&body);
 
     // Build a map from td id to tooltip text
@@ -72,6 +89,7 @@ pub async fn fetch_contribution_stats(username: &str, _github_url: Option<&str>)
         }
     }
     if contributions.is_empty() {
+        error!("No contributions found for user {}", username);
         return Err(anyhow!("No contributions found for user {}", username));
     }
     // Sort by date string (alphabetically, which works for YYYY-MM-DD)
