@@ -1,4 +1,4 @@
-<svg width="775" height="120" xmlns="http://www.w3.org/2000/svg">
+<svg style="margin:auto;max-width:initial;" height="{{ svg_height }}"  viewBox="0 0 775 120" xmlns="http://www.w3.org/2000/svg">
     {% set cell_size = 12 %}
     {% set cell_gap = 2 %}
     {% set max_rows = 7 %}

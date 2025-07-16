@@ -4,6 +4,8 @@ use scraper::{Html, Selector};
 use std::collections::HashMap;
 
 pub mod api;
+pub mod color;
+pub mod templates;
 
 #[derive(Debug, Deserialize, serde::Serialize, Clone)]
 pub struct ContributionStats {
