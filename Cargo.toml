@@ -19,6 +19,9 @@ url = "2.5.4"
 log = "0.4"
 env_logger = "0.11"
 
-
 [profile.release]
 strip = true
+
+[[bin]]
+name = "glance-github-graph"
+path = "src/main.rs"

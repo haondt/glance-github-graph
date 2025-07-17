@@ -13,7 +13,8 @@ pub struct Config {
     pub default_show_weekdays: bool,
     pub cell_radius: u32,
     pub weekday_labels: Vec<(usize, &'static str)>,
-    pub transition_hue: bool,
+    pub default_transition_hue: bool,
+    pub default_font_size: String,
 }
 
 impl Config {
@@ -37,7 +38,8 @@ impl Config {
             default_show_weekdays: true,
             cell_radius: 2,
             weekday_labels: vec![(1, "Mon"), (3, "Wed"), (5, "Fri")],
-            transition_hue: false,
+            default_transition_hue: false,
+            default_font_size: "12".to_string(),
         }
     }
 } 

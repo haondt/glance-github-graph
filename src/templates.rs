@@ -25,6 +25,7 @@ pub struct ContributionSvgGraphTemplate<'a> {
     pub cells: Vec<GraphCell>,
     pub show_months: bool,
     pub svg_height: String,
+    pub font_size: String,
     pub show_weekdays: bool,
     pub primary_color: String,
     pub color_shades: Vec<String>,

@@ -23,12 +23,12 @@
     {% set max_rows = 7 %}
     {% if show_months %}
         {% for (col, month) in month_labels %}
-            <text x="{{ col * (cell_size + cell_gap) + label_offset }}" y="{{ top_offset - 5 }}" font-size="12" fill="var(--color-text-base)">{{ month }}</text>
+            <text x="{{ col * (cell_size + cell_gap) + label_offset }}" y="{{ top_offset - 5 }}" font-size="{{ font_size }}" fill="var(--color-text-base)">{{ month }}</text>
         {% endfor %}
     {% endif %}
     {% if show_weekdays %}
         {% for (row, label) in weekday_labels %}
-            <text x="0" y="{{ top_offset + row * (cell_size + cell_gap) + 10 }}" font-size="12" fill="var(--color-text-base)">{{ label }}</text>
+            <text x="0" y="{{ top_offset + row * (cell_size + cell_gap) + 10 }}" font-size="{{ font_size }}" fill="var(--color-text-base)">{{ label }}</text>
         {% endfor %}
     {% endif %}
     {% for cell in cells %}
