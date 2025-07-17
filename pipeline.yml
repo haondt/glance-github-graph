@@ -4,7 +4,6 @@ tasks:
     platforms:
       - linux/arm64
       - linux/amd64
-    # qemu: true
     auto:
       - source: push
         has_tag: true
@@ -12,8 +11,7 @@ tasks:
       - source: push
         has_tag: true
         tag_source: latest
-    context: glance-github-graph
-    file: Dockerfile
+    context: .
     registries:
       - gitlab
       - docker-hub
