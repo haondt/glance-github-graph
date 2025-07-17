@@ -24,4 +24,6 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 EXPOSE 8080
 COPY --from=builder /app/glance-github-graph ./glance-github-graph
+
+ENV RUST_LOG=info,html5ever::tree_builder=error
 CMD ["./glance-github-graph"] 
