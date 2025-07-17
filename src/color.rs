@@ -42,13 +42,17 @@ pub fn hex_to_rgb(hex: &str) -> Result<(u8, u8, u8), ()> {
     Err(())
 }
 
-pub fn derive_color_shades_with_bg(primary: &str, bg_color: &str) -> Vec<String> {
+pub fn derive_color_shades_with_bg(primary: &str, bg_color: &str, transition_hue: bool) -> Vec<String> {
     if let (Ok((h1, s1, l1)), Ok((h2, s2, l2))) = (hex_to_hsl(bg_color), hex_to_hsl(primary)) {
         let steps = 5;
         (0..steps)
             .map(|i| {
                 let t = i as f32 / (steps - 1) as f32;
-                let h = if i == 0 { h1 } else { h2 };
+                let h = if transition_hue {
+                    h1 + (h2 - h1) * t
+                } else {
+                    if i == 0 { h1 } else { h2 }
+                };
                 let s = s1 + (s2 - s1) * t;
                 let l = l1 + (l2 - l1) * t;
                 hsl_string(h, s, l)

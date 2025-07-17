@@ -28,10 +28,11 @@ fn prepare_graph_template_data<'a>(
     let svg_height = params.get("svg-height").cloned().unwrap_or_else(|| config.default_svg_height.clone());
     let show_months = params.get("show-months").and_then(|v| v.parse::<bool>().ok()).unwrap_or(config.default_show_months);
     let show_weekdays = params.get("show-weekdays").and_then(|v| v.parse::<bool>().ok()).unwrap_or(config.default_show_weekdays);
+    let transition_hue = params.get("transition-hue").and_then(|v| v.parse::<bool>().ok()).unwrap_or(config.transition_hue);
 
     let max_count = stats.daily_contributions.iter().map(|(_, c, _)| *c).max().unwrap_or(0);
     let max_rows = 7;
-    let color_shades = color::derive_color_shades_with_bg(&primary_color, &bg_color);
+    let color_shades = color::derive_color_shades_with_bg(&primary_color, &bg_color, transition_hue);
     let cells: Vec<GraphCell> = stats.daily_contributions.iter().enumerate().map(|(i, (date, count, label))| {
         let col = i / max_rows;
         let row = i % max_rows;

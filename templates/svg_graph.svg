@@ -1,9 +1,26 @@
-<svg style="margin:auto;max-width:initial;" height="{{ svg_height }}"  viewBox="0 0 775 120" xmlns="http://www.w3.org/2000/svg">
+{%- let view_box_right -%}
+{%- let label_offset -%}
+{%- if show_weekdays -%}
+    {%- let view_box_right = 775 -%}
+    {%- let label_offset = 30 -%}
+{%- else -%}
+    {% let view_box_right = 750 -%}
+    {% let label_offset = 5 -%}
+{%- endif -%}
+
+{%- let view_box_bottom -%}
+{%- let top_offset -%}
+{%- if show_months -%}
+    {%- let view_box_bottom = 120 -%}
+    {%- let top_offset = 20 -%}
+{%- else -%}
+    {% let view_box_bottom = 105 -%}
+    {% let top_offset = 5 -%}
+{%- endif -%}
+<svg style="margin:auto;max-width:initial;" height="{{ svg_height }}"  viewBox="0 0 {{ view_box_right }} {{ view_box_bottom }}" xmlns="http://www.w3.org/2000/svg">
     {% set cell_size = 12 %}
     {% set cell_gap = 2 %}
     {% set max_rows = 7 %}
-    {% set label_offset = 30 %}
-    {% set top_offset = 20 %}
     {% if show_months %}
         {% for (col, month) in month_labels %}
             <text x="{{ col * (cell_size + cell_gap) + label_offset }}" y="{{ top_offset - 5 }}" font-size="12" fill="var(--color-text-base)">{{ month }}</text>
